@@ -44,6 +44,8 @@ def signature_verification(timestamp, slack_payload_dict, signign_secret, incomi
 
     if my_signature == incoming_slack_signature:  
         return True
+    else:
+        return False
 
 def user_text_input_verification(input_text):
     return input_text == ''
@@ -104,12 +106,14 @@ def all_schedules():
         response = make_response(output, 200)
         response.mimetype = "text/plain"
         return response
-    else: 
-        response = make_response('Text input is not permitted', 403)
+    elif signature_validation_result and not input_text_verif_result: 
+        response = make_response('Error: Text input is not permitted', 200)
         response.mimetype = "text/plain"
         return response
-
-    return '', 400
+    elif not signature_validation_result: 
+        response = make_response('', 403)
+        response.mimetype = "text/plain"
+        return response
 
 if __name__ == "__main__":
     app.run(debug=True)
