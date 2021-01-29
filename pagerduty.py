@@ -1,6 +1,5 @@
 from flask import Flask, request, make_response
 import requests
-import json
 import pprint
 import time 
 import hmac 
@@ -22,7 +21,7 @@ schedules_id = []
 
 rr = requests.get('https://api.pagerduty.com/schedules', headers = {"Authorization":'Token token='+PD_token},  params = payload_schedules)
 
-schedules_page_response = json.loads(rr.text)
+schedules_page_response = rr.json()
 
 all_schedules_list = schedules_page_response['schedules']
 
