@@ -26,7 +26,7 @@ schedules_page_response = json.loads(rr.text)
 
 all_schedules_list = schedules_page_response['schedules']
 
-for i,j in enumerate(all_schedules_list):
+for j in all_schedules_list:
     schedules_id.append(j['id'])
 
 def signature_verification(timestamp, slack_payload_dict, signign_secret, incoming_slack_signature):
@@ -59,7 +59,7 @@ def obtain_oncalls_results(schedules_list):
     
     ## create a dict with each schedule and the oncall user
     information_dict = {}
-    for i,j in enumerate(pager_response['oncalls']):
+    for j in pager_response['oncalls']:
         if j['schedule']['summary'] not in information_dict:
             information_dict[j['schedule']['summary']] = j['user']['summary']
 
@@ -77,9 +77,9 @@ def all_schedules():
     slack_signature = slack_headers['X-Slack-Signature'] # this is the signature that Slack sends along the POST, in the headers.
     timestamp = slack_headers['X-Slack-Request-Timestamp'] #absolute time in headers sent by Slack
 
-        ### Security measure ###
-        # The request timestamp is more than five minutes from local time.
-        # It could be a replay attack, so let's ignore it. Otherwise, the controller continues
+    ### Security measure ###
+    # The request timestamp is more than five minutes from local time.
+    # It could be a replay attack, so let's ignore it. Otherwise, the controller continues
     if timestamp is not None:
         timestamp = float(timestamp)
         if abs(time.time() - timestamp) > 60 * 5:
@@ -97,8 +97,10 @@ def all_schedules():
     signature_validation_result = signature_verification(timestamp2, dict_slack, slack_signing_secret, slack_signature) 
     
     ### Security measure ###
-    user_text_input = dict_slack['text']  # declare the incoming request's text input (hoping it'll be empty!)
-    input_text_verif_result = user_text_input_verification(user_text_input) # verify no input text was passed, if successful this will be True
+    # declare the incoming request's text input (hoping it'll be empty!)
+    user_text_input = dict_slack['text']  
+    # verify no input text was passed, if successful this will be True
+    input_text_verif_result = user_text_input_verification(user_text_input) 
     
     # if the signatures match and no text was passed, let's then run this show!
     if signature_validation_result and input_text_verif_result: 
@@ -107,7 +109,7 @@ def all_schedules():
         response.mimetype = "text/plain"
         return response
     elif signature_validation_result and not input_text_verif_result: 
-        response = make_response('Error: Text input is not permitted', 200)
+        response = make_response('Error: Text input is not permitted', 200) # 200 response is required in order to offer a message to the user
         response.mimetype = "text/plain"
         return response
     elif not signature_validation_result: 
