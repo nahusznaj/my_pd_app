@@ -74,14 +74,14 @@ def all_schedules():
 
     ### Security measure ###
     # verify the signature, if successful this will be True
-    signature_verification(timestamp, dict_slack, slack_signing_secret, slack_signature) 
+    signature_validation_result = signature_verification(timestamp, dict_slack, slack_signing_secret, slack_signature) 
     
     ### Security measure ###
     user_text_input = dict_slack['text']  # declare the incoming request's text input (hoping it'll be empty!)
-    user_text_input_verification(user_text_input) # verify no input text was passed, if successful this will be True
+    input_text_verif_result = user_text_input_verification(user_text_input) # verify no input text was passed, if successful this will be True
     
     # if the signatures match and no text was passed, let's then run this show!
-    if signature_verification and user_text_input_verification: 
+    if signature_validation_result and input_text_verif_result: 
         ## read the schedules for each scheduleID item 
         payload = {'time_zone':'America/Argentina/Buenos_Aires', 'total':'true', 'schedule_ids[]':schedules_id, 'limit':100} #scheduleIDs 
         r = requests.get('https://api.pagerduty.com/oncalls', headers = {"Authorization":'Token token='+PD_token},  params = payload)
