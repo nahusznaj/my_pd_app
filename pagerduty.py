@@ -48,6 +48,25 @@ def signature_verification(timestamp, slack_payload_dict, signign_secret, incomi
 def user_text_input_verification(input_text):
     return input_text == ''
 
+def obtain_oncalls_results(schedules_list):
+    ## read the schedules for each scheduleID item 
+    payload = {'time_zone':'America/Argentina/Buenos_Aires', 'total':'true', 'schedule_ids[]':schedules_list, 'limit':100} #scheduleIDs 
+    r = requests.get('https://api.pagerduty.com/oncalls', headers = {"Authorization":'Token token='+PD_token},  params = payload)
+    
+    pager_response = json.loads(r.text)
+    
+    ## create a dict with each schedule and the oncall user
+    information_dict = {}
+    for i,j in enumerate(pager_response['oncalls']):
+        if j['schedule']['summary'] not in information_dict:
+            information_dict[j['schedule']['summary']] = j['user']['summary']
+
+    information_dict = dict( sorted(information_dict.items(), key=lambda x: x[0].lower()) )
+
+    output = '\n'.join("{}: {}".format(k, v) for k, v in information_dict.items()) # produce the text message for the response
+
+    return output 
+
 @app.route('/', methods=['POST']) 
 def all_schedules():
 
@@ -63,18 +82,17 @@ def all_schedules():
         timestamp = float(timestamp)
         if abs(time.time() - timestamp) > 60 * 5:
             return '', 403  
-    
-    # earlier we converted timestamp to float to check the replay thread, we need to convert it again to srting, and trim the last two digits: XXXX.0 -> XXXX
-    timestamp = str(timestamp)
-    timestamp = timestamp[:len(timestamp)-2] 
 
+    timestamp2 = slack_headers['X-Slack-Request-Timestamp'] # another var of absolute time in headers sent by Slack
     
     slack_payload = request.form
-    dict_slack = slack_payload.to_dict() # this is the payload in the body of the request from Slack to our app when the slash command was executed in Slack
+    
+    # this is the payload in the body of the request from Slack to our app when the slash command was executed in Slack
+    dict_slack = slack_payload.to_dict() 
 
     ### Security measure ###
     # verify the signature, if successful this will be True
-    signature_validation_result = signature_verification(timestamp, dict_slack, slack_signing_secret, slack_signature) 
+    signature_validation_result = signature_verification(timestamp2, dict_slack, slack_signing_secret, slack_signature) 
     
     ### Security measure ###
     user_text_input = dict_slack['text']  # declare the incoming request's text input (hoping it'll be empty!)
@@ -82,21 +100,7 @@ def all_schedules():
     
     # if the signatures match and no text was passed, let's then run this show!
     if signature_validation_result and input_text_verif_result: 
-        ## read the schedules for each scheduleID item 
-        payload = {'time_zone':'America/Argentina/Buenos_Aires', 'total':'true', 'schedule_ids[]':schedules_id, 'limit':100} #scheduleIDs 
-        r = requests.get('https://api.pagerduty.com/oncalls', headers = {"Authorization":'Token token='+PD_token},  params = payload)
-        
-        pager_response = json.loads(r.text)
-        
-        ## create a dict with each schedule and the oncall user
-        information_dict = {}
-        for i,j in enumerate(pager_response['oncalls']):
-            if j['schedule']['summary'] not in information_dict:
-                information_dict[j['schedule']['summary']] = j['user']['summary']
-
-        information_dict = dict( sorted(information_dict.items(), key=lambda x: x[0].lower()) )
-
-        output = '\n'.join("{}: {}".format(k, v) for k, v in information_dict.items()) # produce the text message for the response
+        output = obtain_oncalls_results(schedules_id)
         response = make_response(output, 200)
         response.mimetype = "text/plain"
         return response
